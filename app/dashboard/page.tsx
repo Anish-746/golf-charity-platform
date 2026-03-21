@@ -10,6 +10,7 @@ import CharityModule from '@/components/dashboard/CharityModule'
 import SubscriptionModule from '@/components/dashboard/SubscriptionModule'
 import DrawModule from '@/components/dashboard/DrawModule'
 import type { Profile, Score, Charity, Draw, Winner } from '@/types/database'
+import WinnerAlert from '@/components/dashboard/WinnerAlert'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -32,6 +33,7 @@ export default async function DashboardPage() {
     supabase.from('charities').select('*').eq('is_active', true).order('is_featured', { ascending: false }),
     supabase.from('draws').select('*').eq('status', 'published').order('draw_month', { ascending: false }).limit(3),
     supabase.from('winners').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('winners').select(`*, draws (draw_month, winning_numbers)`).eq('user_id', user.id).order('created_at', { ascending: false }),
   ])
 
   // Find the charity this user has currently selected (for display)
@@ -41,6 +43,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <WinnerAlert winners={(winnings || []) as any} />
 
       {/* Top navigation bar */}
       <nav className="border-b border-slate-800 px-6 py-4">
