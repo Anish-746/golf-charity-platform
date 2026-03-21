@@ -4,34 +4,53 @@ import { createClient } from "@/lib/supabase/server";
 import LoginForm from "./LoginForm";
 
 async function loginAction(formData: globalThis.FormData) {
-  'use server'
+  "use server";
 
-  const supabase = await createClient()
+  const supabase = await createClient();
 
   const { data: authData, error } = await supabase.auth.signInWithPassword({
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-  })
+    email: formData.get("email") as string,
+    password: formData.get("password") as string,
+  });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`)
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
 
   // After successful login, check the user's role to decide where to send them.
   // We fetch profile immediately using the session that was just created.
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', authData.user.id)
-    .single()
+  let { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", authData.user.id)
+    .single();
+
+  // If profile doesn't exist, create it with default values
+  if (!profile) {
+    const fullName =
+      (authData.user.user_metadata?.full_name as string) ||
+      authData.user.email?.split("@")[0] ||
+      "Unknown User";
+
+    await supabase.from("profiles").insert({
+      id: authData.user.id,
+      full_name: fullName,
+      email: authData.user.email,
+      role: "subscriber",
+      subscription_status: "inactive",
+      charity_percentage: 10,
+    });
+
+    profile = { role: "subscriber" };
+  }
 
   // Admins go to the admin panel — they have no business on the subscriber dashboard
-  if (profile?.role === 'admin') {
-    redirect('/admin')
+  if (profile?.role === "admin") {
+    redirect("/admin");
   }
 
   // Everyone else goes to the subscriber dashboard
-  redirect('/dashboard')
+  redirect("/dashboard");
 }
 
 export default async function LoginPage({
@@ -39,7 +58,7 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const params = await searchParams
+  const params = await searchParams;
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">

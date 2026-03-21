@@ -24,7 +24,7 @@ export default async function DashboardPage() {
   // Think of this like sending 5 letters at once instead of waiting
   // for a reply before sending the next one.
   const [
-    { data: profile },
+    profileResult,
     { data: scores },
     { data: charities },
     { data: draws },
@@ -60,6 +60,36 @@ export default async function DashboardPage() {
       .eq("status", "active")
       .single(),
   ]);
+
+  // If profile doesn't exist or failed to fetch, create it with defaults
+  let profile = profileResult.data;
+  if (!profile) {
+    const fullName =
+      (user.user_metadata?.full_name as string) ||
+      user.email?.split("@")[0] ||
+      "User";
+
+    await supabase.from("profiles").insert({
+      id: user.id,
+      full_name: fullName,
+      email: user.email,
+      role: "subscriber",
+      subscription_status: "inactive",
+      charity_percentage: 10,
+    });
+
+    profile = {
+      id: user.id,
+      full_name: fullName,
+      email: user.email,
+      role: "subscriber",
+      subscription_status: "inactive",
+      stripe_customer_id: null,
+      selected_charity_id: null,
+      charity_percentage: 10,
+      created_at: new Date().toISOString(),
+    };
+  }
 
   // Find the charity this user has currently selected (for display)
   const selectedCharity =
