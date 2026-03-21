@@ -10,16 +10,6 @@ import {
   calculateWinnerPrizes,
 } from "@/lib/draw-engine";
 
-type Profile = {
-  id: string;
-  role: "admin" | "user";
-};
-
-type ScoreRow = {
-  score: number;
-  score_date: string;
-};
-
 type EligibleEntry = {
   userId: string;
   scores: number[];

@@ -4,22 +4,34 @@ import { createClient } from "@/lib/supabase/server";
 import LoginForm from "./LoginForm";
 
 async function loginAction(formData: globalThis.FormData) {
-  "use server";
+  'use server'
 
-  const supabase = await createClient();
+  const supabase = await createClient()
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-  });
+  const { data: authData, error } = await supabase.auth.signInWithPassword({
+    email: formData.get('email') as string,
+    password: formData.get('password') as string,
+  })
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
-  // On success, send to dashboard.
-  // The middleware will verify the session cookie on arrival.
-  redirect("/dashboard");
+  // After successful login, check the user's role to decide where to send them.
+  // We fetch profile immediately using the session that was just created.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', authData.user.id)
+    .single()
+
+  // Admins go to the admin panel — they have no business on the subscriber dashboard
+  if (profile?.role === 'admin') {
+    redirect('/admin')
+  }
+
+  // Everyone else goes to the subscriber dashboard
+  redirect('/dashboard')
 }
 
 export default async function LoginPage({

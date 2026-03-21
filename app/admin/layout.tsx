@@ -29,6 +29,7 @@ export default async function AdminLayout({
     { href: "/admin/users", label: "Users" },
     { href: "/admin/winners", label: "Winners" },
     { href: "/admin/charities", label: "Charities" },
+    { href: '/admin/reports',   label: 'Reports & Analytics' },
   ];
 
   return (

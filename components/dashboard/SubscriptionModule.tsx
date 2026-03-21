@@ -31,7 +31,13 @@ const statusConfig = {
   lapsed: { color: "text-amber-400", bg: "bg-amber-400/10", label: "Lapsed" },
 };
 
-export default function SubscriptionModule({ profile, }: { profile: Profile | null; }) {
+export default function SubscriptionModule({
+  profile,
+  renewalDate,
+}: {
+  profile: Profile
+  renewalDate: string | null
+}) {
   if (!profile) {
     return (
       <div className="bg-slate-900 rounded-xl p-6 border border-slate-800">
@@ -60,6 +66,11 @@ export default function SubscriptionModule({ profile, }: { profile: Profile | nu
         >
           {config.label}
         </span>
+        {status === 'active' && renewalDate && (
+          <span className="text-slate-500 text-xs">
+            Renews {new Date(renewalDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </span>
+        )}
       </div>
 
       {status === "active" ? (

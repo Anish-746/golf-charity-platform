@@ -2,21 +2,23 @@
 // SERVER COMPONENT — fetches all data before sending HTML to browser.
 // Uses Promise.all to run all queries in parallel for speed.
 
-import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
-import { logout } from '@/app/actions/auth'
-import ScoreModule from '@/components/dashboard/ScoreModule'
-import CharityModule from '@/components/dashboard/CharityModule'
-import SubscriptionModule from '@/components/dashboard/SubscriptionModule'
-import DrawModule from '@/components/dashboard/DrawModule'
-import type { Profile, Score, Charity, Draw, Winner } from '@/types/database'
-import WinnerAlert from '@/components/dashboard/WinnerAlert'
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { logout } from "@/app/actions/auth";
+import ScoreModule from "@/components/dashboard/ScoreModule";
+import CharityModule from "@/components/dashboard/CharityModule";
+import SubscriptionModule from "@/components/dashboard/SubscriptionModule";
+import DrawModule from "@/components/dashboard/DrawModule";
+import type { Profile, Score, Charity, Draw, Winner } from "@/types/database";
+import WinnerAlert from "@/components/dashboard/WinnerAlert";
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
+  const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
   // Run all queries at the same time with Promise.all
   // Think of this like sending 5 letters at once instead of waiting
@@ -27,23 +29,66 @@ export default async function DashboardPage() {
     { data: charities },
     { data: draws },
     { data: winnings },
+    { data: subscription },
   ] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('scores').select('*').eq('user_id', user.id).order('score_date', { ascending: false }),
-    supabase.from('charities').select('*').eq('is_active', true).order('is_featured', { ascending: false }),
-    supabase.from('draws').select('*').eq('status', 'published').order('draw_month', { ascending: false }).limit(3),
-    supabase.from('winners').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
-    supabase.from('winners').select(`*, draws (draw_month, winning_numbers)`).eq('user_id', user.id).order('created_at', { ascending: false }),
-  ])
+    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    supabase
+      .from("scores")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("score_date", { ascending: false }),
+    supabase
+      .from("charities")
+      .select("*")
+      .eq("is_active", true)
+      .order("is_featured", { ascending: false }),
+    supabase
+      .from("draws")
+      .select("*")
+      .eq("status", "published")
+      .order("draw_month", { ascending: false })
+      .limit(3),
+    supabase
+      .from("winners")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("subscriptions")
+      .select("current_period_end, plan")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .single(),
+  ]);
 
   // Find the charity this user has currently selected (for display)
-  const selectedCharity = charities?.find(
-    (c: Charity) => c.id === profile?.selected_charity_id
-  ) || null
+  const selectedCharity =
+    charities?.find((c: Charity) => c.id === profile?.selected_charity_id) ||
+    null;
 
   return (
     <div className="min-h-screen bg-slate-950">
       <WinnerAlert winners={(winnings || []) as any} />
+
+      {profile?.subscription_status !== "active" && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6 flex items-center justify-between">
+          <div>
+            <p className="text-amber-400 font-semibold text-sm">
+              Your subscription is {profile?.subscription_status}
+            </p>
+            <p className="text-slate-400 text-xs mt-0.5">
+              Subscribe to enter monthly draws and contribute to your chosen
+              charity.
+            </p>
+          </div>
+          <a
+            href="/subscribe"
+            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm px-4 py-2 rounded-lg transition-colors whitespace-nowrap ml-4"
+          >
+            Subscribe Now
+          </a>
+        </div>
+      )}
 
       {/* Top navigation bar */}
       <nav className="border-b border-slate-800 px-6 py-4">
@@ -52,11 +97,12 @@ export default async function DashboardPage() {
             <span className="text-white font-bold text-xl">Tee It Forward</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-slate-400 text-sm">
-              {profile?.full_name}
-            </span>
+            <span className="text-slate-400 text-sm">{profile?.full_name}</span>
             <form action={logout}>
-              <button type="submit" className="text-slate-400 hover:text-white text-sm transition-colors">
+              <button
+                type="submit"
+                className="text-slate-400 hover:text-white text-sm transition-colors"
+              >
                 Log out
               </button>
             </form>
@@ -66,19 +112,26 @@ export default async function DashboardPage() {
 
       {/* Main dashboard content */}
       <main className="max-w-6xl mx-auto px-6 py-8">
-
         {/* Welcome header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white">
-            Welcome back, {profile?.full_name?.split(' ')[0]} 👋
+            Welcome back, {profile?.full_name?.split(" ")[0]} 👋
           </h1>
-          <p className="text-slate-400 mt-1">{"Here's your Tee It Forward summary"}</p>
+          <p className="text-slate-400 mt-1">
+            {"Here's your Tee It Forward summary"}
+          </p>
         </div>
 
         {/* Top row: Subscription + Draw modules side by side */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <SubscriptionModule profile={profile as Profile} />
-          <DrawModule draws={(draws || []) as Draw[]} winnings={(winnings || []) as Winner[]} />
+          <SubscriptionModule
+            profile={profile as Profile}
+            renewalDate={subscription?.current_period_end || null}
+          />
+          <DrawModule
+            draws={(draws || []) as Draw[]}
+            winnings={(winnings || []) as Winner[]}
+          />
         </div>
 
         {/* Bottom row: Score entry + Charity selection */}
@@ -96,8 +149,7 @@ export default async function DashboardPage() {
             />
           </div>
         </div>
-
       </main>
     </div>
-  )
+  );
 }

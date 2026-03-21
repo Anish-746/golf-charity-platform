@@ -88,11 +88,13 @@ export default function HomeClient({
   featuredCharities,
   currentJackpot,
   totalCharityRaised,
+  hasMoreCharities,
 }: {
   subscriberCount: number;
   featuredCharities: Charity[];
   currentJackpot: number;
   totalCharityRaised: number;
+  hasMoreCharities: boolean;
 }) {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -105,6 +107,15 @@ export default function HomeClient({
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              href="/charities"
+              className="text-slate-400 hover:text-white text-sm transition-colors px-3 py-2"
+            >
+              Charities
+            </Link>
+            <Link href="/donate" className="text-slate-400 hover:text-white text-sm transition-colors px-3 py-2">
+              Donate
+            </Link>
             <Link
               href="/login"
               className="text-slate-400 hover:text-white text-sm transition-colors px-3 py-2"
@@ -158,6 +169,13 @@ export default function HomeClient({
               See how it works
             </Link>
           </div>
+
+          <p className="text-slate-500 text-sm mt-5">
+            Just want to give?{' '}
+            <Link href="/donate" className="text-emerald-400 hover:text-emerald-300 underline transition-colors">
+              Make a direct donation →
+            </Link>
+          </p>
         </div>
       </section>
 
@@ -292,41 +310,92 @@ export default function HomeClient({
         </div>
       </section>
 
-      {/* ── Featured Charities ──────────────────────────────────────────────── */}
-      {featuredCharities.length > 0 && (
-        <section className="py-20 px-6 bg-slate-900/50">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-12">
-              <p className="text-emerald-400 text-sm font-semibold uppercase tracking-widest mb-3">
-                Making a difference
-              </p>
-              <h2 className="text-4xl font-black">Charities you can support</h2>
-              <p className="text-slate-400 mt-3 max-w-xl mx-auto">
-                Choose where your contribution goes. Switch anytime from your
-                dashboard.
-              </p>
-            </div>
-            <div className="grid md:grid-cols-3 gap-6">
-              {featuredCharities.map((charity) => (
-                <div
-                  key={charity.id}
-                  className="bg-slate-900 rounded-xl p-6 border border-slate-800 hover:border-emerald-500/30 transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-lg mb-4">
-                    ♥
-                  </div>
-                  <h3 className="text-white font-semibold mb-2">
-                    {charity.name}
-                  </h3>
-                  <p className="text-slate-400 text-sm leading-relaxed line-clamp-3">
-                    {charity.description}
-                  </p>
-                </div>
-              ))}
-            </div>
+      {/* ── Featured Charities ─────────────────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-slate-900/50">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-emerald-400 text-sm font-semibold uppercase tracking-widest mb-3">
+              Making a difference
+            </p>
+            <h2 className="text-4xl font-black">Charities you can support</h2>
+            <p className="text-slate-400 mt-3 max-w-xl mx-auto">
+              Choose where your contribution goes every month. Switch anytime
+              from your dashboard.
+            </p>
           </div>
-        </section>
-      )}
+
+          {featuredCharities.length === 0 ? (
+            // Fallback state — shown before any charities are added via admin panel
+            <div className="text-center py-12 text-slate-500">
+              <p className="text-lg mb-2">Charities coming soon.</p>
+              <p className="text-sm">
+                Our team is onboarding charity partners.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="grid md:grid-cols-3 gap-6">
+                {featuredCharities.map((charity) => (
+                  <div
+                    key={charity.id}
+                    className="bg-slate-900 rounded-xl p-6 border border-slate-800 hover:border-emerald-500/30 transition-all group"
+                  >
+                    {charity.is_featured && (
+                      <span className="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs px-2 py-0.5 rounded-full mb-3 font-medium">
+                        Featured
+                      </span>
+                    )}
+                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-lg mb-4 group-hover:bg-emerald-500/30 transition-colors">
+                      ♥
+                    </div>
+                    <h3 className="text-white font-bold text-lg mb-2">
+                      {charity.name}
+                    </h3>
+                    <p className="text-slate-400 text-sm leading-relaxed line-clamp-3 mb-4">
+                      {charity.description ||
+                        "Supporting people who need it most."}
+                    </p>
+                    {charity.website && (
+                      <a
+                        href={charity.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-emerald-400 hover:text-emerald-300 text-xs transition-colors"
+                      >
+                        Visit website →
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* View all charities CTA — only shown if there are more than 3 */}
+              {hasMoreCharities && (
+                <div className="text-center mt-10">
+                  <Link
+                    href="/charities"
+                    className="inline-flex items-center gap-2 border border-slate-700 hover:border-emerald-500/50 text-slate-300 hover:text-white px-6 py-3 rounded-xl text-sm font-medium transition-all"
+                  >
+                    View all supported charities →
+                  </Link>
+                </div>
+              )}
+
+              {/* Even if only 3, still link to the full directory */}
+              {!hasMoreCharities && featuredCharities.length > 0 && (
+                <div className="text-center mt-10">
+                  <Link
+                    href="/charities"
+                    className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-300 text-sm transition-colors"
+                  >
+                    Browse charity directory →
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
 
       {/* ── Final CTA ───────────────────────────────────────────────────────── */}
       <section className="py-24 px-6">
@@ -360,6 +429,12 @@ export default function HomeClient({
             © {new Date().getFullYear()} Tee It Forward. All rights reserved.
           </p>
           <div className="flex gap-6">
+            <Link
+              href="/charities"
+              className="text-slate-600 hover:text-slate-400 text-sm transition-colors"
+            >
+              Charities
+            </Link>
             <Link
               href="/login"
               className="text-slate-600 hover:text-slate-400 text-sm transition-colors"

@@ -10,6 +10,7 @@ import {
   calculatePrizePool,
   calculateWinnerPrizes,
 } from '@/lib/draw-engine'
+import { sendWinnerNotification } from '@/lib/email'
 
 type ScoreRow = {
   score: number
@@ -161,16 +162,27 @@ export async function POST(
   }
 
   if (winnerPrizes.length > 0) {
-    const winnerRows = winnerPrizes.map((w) => ({
-      draw_id: drawId,
-      user_id: w.userId,
-      match_type: w.matchType,
-      prize_amount: w.prizeAmount,
-      verification_status: 'pending',
-      payout_status: 'pending',
-    }))
+    try {
+      for (const winner of winnerPrizes) {
+        const { data: winnerProfile } = await serviceSupabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', winner.userId)
+          .single()
 
-    await serviceSupabase.from('winners').insert(winnerRows)
+        if (winnerProfile?.email) {
+          await sendWinnerNotification({
+            to: winnerProfile.email,
+            name: winnerProfile.full_name || 'Golfer',
+            prizeAmount: winner.prizeAmount,
+            drawMonth: draw.draw_month,
+          })
+        }
+      }
+    } catch (emailError) {
+      // Log but don't fail the publish — email is non-critical
+      console.error('Email send failed:', emailError)
+    }
   }
 
   const hasJackpotWinner = winnerPrizes.some((w) => w.matchType === 5)
