@@ -43,31 +43,33 @@ async function signupAction(formData: globalThis.FormData) {
 }
 
 // The page itself — passes the server action down to the client form component
-export default function SignupPage({
+export default async function SignupPage({
   searchParams,
 }: {
-  searchParams: { error?: string; success?: string };
+  searchParams: Promise<{ error?: string; success?: string }>;
 }) {
+  const params = await searchParams
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white">Golf for Good</h1>
+          <h1 className="text-3xl font-bold text-white">Tee It Forward</h1>
           <p className="text-slate-400 mt-2">Play. Win. Give.</p>
         </div>
 
         {/* Success message after signup */}
-        {searchParams.success && (
+        {params.success && (
           <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 mb-6 text-emerald-400 text-sm text-center">
             Check your email to confirm your account, then log in.
           </div>
         )}
 
         {/* Error message */}
-        {searchParams.error && (
+        {params.error && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6 text-red-400 text-sm text-center">
-            {searchParams.error}
+            {params.error}
           </div>
         )}
 

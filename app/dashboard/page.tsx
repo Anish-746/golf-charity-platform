@@ -1,67 +1,100 @@
 // app/dashboard/page.tsx
-// This is a protected page — middleware already ensures only logged-in users reach here.
-// We fetch the user's profile from Supabase on the server side.
+// SERVER COMPONENT — fetches all data before sending HTML to browser.
+// Uses Promise.all to run all queries in parallel for speed.
 
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import { logout } from "@/app/actions/auth";
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { logout } from '@/app/actions/auth'
+import ScoreModule from '@/components/dashboard/ScoreModule'
+import CharityModule from '@/components/dashboard/CharityModule'
+import SubscriptionModule from '@/components/dashboard/SubscriptionModule'
+import DrawModule from '@/components/dashboard/DrawModule'
+import type { Profile, Score, Charity, Draw, Winner } from '@/types/database'
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
+  const supabase = await createClient()
 
-  // getUser() verifies the session with Supabase's servers — not just the local cookie.
-  // Always use getUser() for security checks, never getSession().
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-  if (!user) redirect("/login");
+  // Run all queries at the same time with Promise.all
+  // Think of this like sending 5 letters at once instead of waiting
+  // for a reply before sending the next one.
+  const [
+    { data: profile },
+    { data: scores },
+    { data: charities },
+    { data: draws },
+    { data: winnings },
+  ] = await Promise.all([
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    supabase.from('scores').select('*').eq('user_id', user.id).order('score_date', { ascending: false }),
+    supabase.from('charities').select('*').eq('is_active', true).order('is_featured', { ascending: false }),
+    supabase.from('draws').select('*').eq('status', 'published').order('draw_month', { ascending: false }).limit(3),
+    supabase.from('winners').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
+  ])
 
-  // Fetch the user's profile from our public.profiles table
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  // Find the charity this user has currently selected (for display)
+  const selectedCharity = charities?.find(
+    (c: Charity) => c.id === profile?.selected_charity_id
+  ) || null
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-slate-950">
+
+      {/* Top navigation bar */}
+      <nav className="border-b border-slate-800 px-6 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">
-              Welcome, {profile?.full_name || "Golfer"} 👋
-            </h1>
-            <p className="text-slate-400">Your Golf for Good dashboard</p>
+            <span className="text-white font-bold text-xl">Tee It Forward</span>
           </div>
-
-          {/* Logout button calls our server action */}
-          <form action={logout}>
-            <button
-              type="submit"
-              className="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg 
-                         text-sm transition-colors"
-            >
-              Log out
-            </button>
-          </form>
-        </div>
-
-        {/* Placeholder cards — you'll build these out next */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-slate-800 rounded-xl p-6">
-            <h2 className="font-semibold text-slate-300 mb-1">Subscription</h2>
-            <p className="text-2xl font-bold text-emerald-400 capitalize">
-              {profile?.subscription_status || "Inactive"}
-            </p>
-          </div>
-
-          <div className="bg-slate-800 rounded-xl p-6">
-            <h2 className="font-semibold text-slate-300 mb-1">Your Scores</h2>
-            <p className="text-slate-400 text-sm">No scores entered yet</p>
+          <div className="flex items-center gap-4">
+            <span className="text-slate-400 text-sm">
+              {profile?.full_name}
+            </span>
+            <form action={logout}>
+              <button type="submit" className="text-slate-400 hover:text-white text-sm transition-colors">
+                Log out
+              </button>
+            </form>
           </div>
         </div>
-      </div>
+      </nav>
+
+      {/* Main dashboard content */}
+      <main className="max-w-6xl mx-auto px-6 py-8">
+
+        {/* Welcome header */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-white">
+            Welcome back, {profile?.full_name?.split(' ')[0]} 👋
+          </h1>
+          <p className="text-slate-400 mt-1">{"Here's your Tee It Forward summary"}</p>
+        </div>
+
+        {/* Top row: Subscription + Draw modules side by side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <SubscriptionModule profile={profile as Profile} />
+          <DrawModule draws={(draws || []) as Draw[]} winnings={(winnings || []) as Winner[]} />
+        </div>
+
+        {/* Bottom row: Score entry + Charity selection */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Score module takes 2/3 of the width on large screens */}
+          <div className="lg:col-span-2">
+            <ScoreModule scores={(scores || []) as Score[]} />
+          </div>
+          {/* Charity module takes 1/3 */}
+          <div>
+            <CharityModule
+              charities={(charities || []) as Charity[]}
+              selectedCharity={selectedCharity as Charity | null}
+              currentPercentage={profile?.charity_percentage || 10}
+            />
+          </div>
+        </div>
+
+      </main>
     </div>
-  );
+  )
 }

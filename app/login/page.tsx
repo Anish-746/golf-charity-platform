@@ -22,24 +22,26 @@ async function loginAction(formData: globalThis.FormData) {
   redirect("/dashboard");
 }
 
-export default function LoginPage({
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: { error?: string };
+  searchParams: Promise<{ error?: string }>;
 }) {
+  const params = await searchParams
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white">Welcome back</h1>
           <p className="text-slate-400 mt-2">
-            Log in to your Golf for Good account
+            Log in to your Tee It Forward account
           </p>
         </div>
 
-        {searchParams.error && (
+        {params.error && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6 text-red-400 text-sm text-center">
-            {searchParams.error}
+            {params.error}
           </div>
         )}
 
