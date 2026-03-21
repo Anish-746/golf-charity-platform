@@ -61,7 +61,7 @@ function getServiceClient() {
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: { drawId: string } }
+  { params }: { params: Promise<{ drawId: string }> }
 ) {
   const {drawId} = await params
   const supabase = await createClient()
