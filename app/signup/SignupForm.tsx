@@ -19,26 +19,60 @@ const signupSchema = z.object({
 type SignupFields = z.infer<typeof signupSchema>
 
 // The action prop explicitly uses the browser's native FormData (globalThis.FormData)
-export default function SignupForm({ action }: { action: (formData: globalThis.FormData) => Promise<void> }) {
+export default function SignupForm({ action }: { action: (formData: globalThis.FormData) => Promise<{ success?: boolean; error?: string; message?: string }> }) {
   const [isLoading, setIsLoading] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
   const { register, handleSubmit, formState: { errors } } = useForm<SignupFields>({
     resolver: zodResolver(signupSchema),
   })
 
   const onSubmit = async (data: SignupFields) => {
     setIsLoading(true)
-    // Build a native FormData object to pass to the server action
-    const formData = new globalThis.FormData()
-    formData.append('fullName', data.fullName)
-    formData.append('email', data.email)
-    formData.append('password', data.password)
-    await action(formData)
-    setIsLoading(false)
+    setSubmitError(null)
+    setSubmitSuccess(null)
+
+    try {
+      // Build a native FormData object to pass to the server action
+      const formData = new globalThis.FormData()
+      formData.append('fullName', data.fullName)
+      formData.append('email', data.email)
+      formData.append('password', data.password)
+
+      const result = await action(formData)
+
+      if (result.error) {
+        setSubmitError(result.error)
+      } else if (result.success) {
+        setSubmitSuccess(result.message || 'Account created successfully!')
+        // Redirect after a brief delay to show the success message
+        setTimeout(() => {
+          window.location.href = '/login?message=' + encodeURIComponent('Check your email to confirm your account')
+        }, 2000)
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred'
+      setSubmitError(errorMessage)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Note: all classNames are now single-line strings — fixes the hydration error
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {submitError && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">
+          {submitError}
+        </div>
+      )}
+      
+      {submitSuccess && (
+        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3 text-emerald-400 text-sm">
+          {submitSuccess}
+        </div>
+      )}
+
       <div>
         <label className="block text-sm font-medium text-slate-300 mb-1">Full Name</label>
         <input {...register('fullName')} type="text" placeholder="John Smith" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors" />

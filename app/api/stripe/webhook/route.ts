@@ -38,6 +38,32 @@ export async function POST(request: NextRequest) {
 
   const supabase = getServiceSupabase()
 
+  // Idempotency check: prevent duplicate processing of the same webhook event
+  const { data: processedEvent } = await supabase
+    .from('webhook_events')
+    .select('id')
+    .eq('stripe_event_id', event.id)
+    .single()
+
+  // If we've already processed this event, return success immediately
+  if (processedEvent) {
+    return NextResponse.json({ received: true })
+  }
+
+  // Mark the event as being processed (insert early to prevent race conditions)
+  const { error: insertError } = await supabase
+    .from('webhook_events')
+    .insert({
+      stripe_event_id: event.id,
+      event_type: event.type,
+      processed_at: new Date().toISOString(),
+    })
+
+  if (insertError) {
+    console.error('Failed to record webhook event:', insertError)
+    // Still continue with processing — the record may already exist from another instance
+  }
+
   switch (event.type) {
     case 'customer.subscription.created':
     case 'customer.subscription.updated': {
@@ -127,6 +153,32 @@ export async function POST(request: NextRequest) {
           .update({ subscription_status: 'lapsed' })
           .eq('id', profile.id)
       }
+
+      break
+    }
+
+    case 'checkout.session.completed': {
+      const session = event.data.object as Stripe.Checkout.Session
+      const charityId = session.metadata?.charity_id
+
+      if (!charityId) break
+
+      // Only process one-time donations (mode: 'payment')
+      if (session.mode !== 'payment') break
+
+      // Get the amount from the line items
+      const lineItems = await stripe.checkout.sessions.listLineItems(session.id)
+      const totalAmount = lineItems.data.reduce((sum, item) => {
+        return sum + (item.amount_total || 0)
+      }, 0)
+
+      const amountInPounds = totalAmount / 100
+
+      // Increment charity_raised in the charities table
+      await supabase.rpc('increment_charity_raised', {
+        charity_id: charityId,
+        amount_to_add: amountInPounds,
+      })
 
       break
     }

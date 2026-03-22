@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { MAX_FILE_SIZE_BYTES, ALLOWED_PROOF_MIME_TYPES } from '@/lib/constants'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -17,6 +18,26 @@ export async function POST(request: NextRequest) {
 
   if (!file || !winnerId) {
     return NextResponse.json({ error: 'File and winner ID required' }, { status: 400 })
+  }
+
+  // Validate file size
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return NextResponse.json(
+      {
+        error: `File size exceeds maximum of ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB`,
+      },
+      { status: 400 }
+    )
+  }
+
+  // Validate MIME type
+  if (!ALLOWED_PROOF_MIME_TYPES.includes(file.type as any)) {
+    return NextResponse.json(
+      {
+        error: `Invalid file type. Allowed types: ${ALLOWED_PROOF_MIME_TYPES.join(', ')}`,
+      },
+      { status: 400 }
+    )
   }
 
   // Verify this winner row actually belongs to this user

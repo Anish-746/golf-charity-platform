@@ -1,3 +1,14 @@
+// ─── Imports ──────────────────────────────────────────────────────────────────
+
+import {
+  WINNING_NUMBERS_COUNT,
+  GOLF_SCORE_MAX,
+  PRIZE_MATCH_TIERS,
+  JACKPOT_POOL_PERCENTAGE,
+  FOUR_MATCH_POOL_PERCENTAGE,
+  THREE_MATCH_POOL_PERCENTAGE,
+} from './constants'
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type DrawType = 'random' | 'algorithmic'
@@ -25,8 +36,8 @@ export type PrizeBreakdown = {
 export function generateRandomNumbers(): number[] {
   const numbers: number[] = []
 
-  while (numbers.length < 5) {
-    const num = Math.floor(Math.random() * 45) + 1  // 1 to 45 inclusive
+  while (numbers.length < WINNING_NUMBERS_COUNT) {
+    const num = Math.floor(Math.random() * GOLF_SCORE_MAX) + 1  // 1 to GOLF_SCORE_MAX inclusive
     if (!numbers.includes(num)) {
       numbers.push(num)
     }
@@ -49,26 +60,26 @@ export function generateRandomNumbers(): number[] {
  * @param allScores - flat array of every score from every active subscriber
  */
 export function generateAlgorithmicNumbers(allScores: number[]): number[] {
-  // Count frequency of each number 1–45
+  // Count frequency of each number 1–GOLF_SCORE_MAX
   const frequency: Record<number, number> = {}
-  for (let i = 1; i <= 45; i++) frequency[i] = 0
+  for (let i = 1; i <= GOLF_SCORE_MAX; i++) frequency[i] = 0
   for (const score of allScores) {
-    if (score >= 1 && score <= 45) frequency[score]++
+    if (score >= 1 && score <= GOLF_SCORE_MAX) frequency[score]++
   }
 
   // Invert: least frequent gets highest weight
   // We add 1 to avoid division by zero for numbers that never appeared
   const weights: Record<number, number> = {}
-  for (let i = 1; i <= 45; i++) {
+  for (let i = 1; i <= GOLF_SCORE_MAX; i++) {
     weights[i] = 1 / (frequency[i] + 1)
   }
 
   // Weighted random selection without replacement
   const selected: number[] = []
 
-  while (selected.length < 5) {
+  while (selected.length < WINNING_NUMBERS_COUNT) {
     // Build a cumulative distribution from remaining numbers
-    const remaining = Array.from({ length: 45 }, (_, i) => i + 1)
+    const remaining = Array.from({ length: GOLF_SCORE_MAX }, (_, i) => i + 1)
       .filter(n => !selected.includes(n))
 
     const totalWeight = remaining.reduce((sum, n) => sum + weights[n], 0)
@@ -116,9 +127,9 @@ export function processAllEntries(
 
     // Only 3, 4, 5 matches win prizes — anything below is no match
     const matchType =
-      matchCount >= 5 ? 5 :
-      matchCount >= 4 ? 4 :
-      matchCount >= 3 ? 3 :
+      matchCount >= PRIZE_MATCH_TIERS.JACKPOT ? PRIZE_MATCH_TIERS.JACKPOT :
+      matchCount >= PRIZE_MATCH_TIERS.FOUR_MATCH ? PRIZE_MATCH_TIERS.FOUR_MATCH :
+      matchCount >= PRIZE_MATCH_TIERS.THREE_MATCH ? PRIZE_MATCH_TIERS.THREE_MATCH :
       null
 
     return {
@@ -143,9 +154,9 @@ export function calculatePrizePool(
   const totalPool = totalContributions + jackpotCarryover
 
   return {
-    jackpotPool:    parseFloat((totalPool * 0.40).toFixed(2)),
-    fourMatchPool:  parseFloat((totalPool * 0.35).toFixed(2)),
-    threeMatchPool: parseFloat((totalPool * 0.25).toFixed(2)),
+    jackpotPool:    parseFloat((totalPool * JACKPOT_POOL_PERCENTAGE).toFixed(2)),
+    fourMatchPool:  parseFloat((totalPool * FOUR_MATCH_POOL_PERCENTAGE).toFixed(2)),
+    threeMatchPool: parseFloat((totalPool * THREE_MATCH_POOL_PERCENTAGE).toFixed(2)),
     totalPool:      parseFloat(totalPool.toFixed(2)),
   }
 }

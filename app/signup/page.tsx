@@ -33,23 +33,22 @@ async function signupAction(formData: globalThis.FormData) {
   });
 
   if (error) {
-    // In a real app you'd pass this error back to the form.
-    // For now, redirect with an error param.
-    redirect(`/signup?error=${encodeURIComponent(error.message)}`);
+    // Return error instead of redirecting to preserve form state
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 
-  // Redirect to a "check your email" page
-  redirect("/signup?success=true");
+  // Return success — client will handle navigation
+  return {
+    success: true,
+    message: "Account created! Check your email to confirm.",
+  };
 }
 
 // The page itself — passes the server action down to the client form component
-export default async function SignupPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; success?: string }>;
-}) {
-  const params = await searchParams
-
+export default async function SignupPage() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -58,20 +57,6 @@ export default async function SignupPage({
           <h1 className="text-3xl font-bold text-white">Tee It Forward</h1>
           <p className="text-slate-400 mt-2">Play. Win. Give.</p>
         </div>
-
-        {/* Success message after signup */}
-        {params.success && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 mb-6 text-emerald-400 text-sm text-center">
-            Check your email to confirm your account, then log in.
-          </div>
-        )}
-
-        {/* Error message */}
-        {params.error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6 text-red-400 text-sm text-center">
-            {params.error}
-          </div>
-        )}
 
         {/* 
           SignupForm is a CLIENT component (defined below).

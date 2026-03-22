@@ -1,36 +1,41 @@
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = "Tee It Forward <noreply@yourdomain.com>";
-// Replace yourdomain.com with your actual domain once deployed.
-// During development, Resend lets you send to your own email without a custom domain.
+const DOMAIN = process.env.RESEND_DOMAIN || "onboarding@resend.dev";
+const FROM = `Tee It Forward <${DOMAIN}>`;
 
 export async function sendWinnerNotification({
   to,
   name,
   prizeAmount,
   drawMonth,
+  matchType = 5,
 }: {
   to: string;
   name: string;
   prizeAmount: number;
   drawMonth: string;
+  matchType?: 3 | 4 | 5;
 }) {
-  const matchLabel = 5;
   const formattedMonth = new Date(drawMonth).toLocaleDateString("en-GB", {
     month: "long",
     year: "numeric",
   });
 
+  const prizeDescription = 
+    matchType === 5 ? "Jackpot! 5 matches" :
+    matchType === 4 ? "Excellent! 4 matches" :
+    "Great! 3 matches";
+
   await resend.emails.send({
     from: FROM,
     to,
-    subject: `🏆 You won the ${formattedMonth} Tee It Forward draw!`,
+    subject: `You won the ${formattedMonth} Tee It Forward draw!`,
     html: `
       <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0f172a;color:#fff;padding:32px;border-radius:16px">
         <h1 style="color:#10b981;font-size:28px;margin-bottom:8px">You won!</h1>
         <p style="color:#94a3b8;font-size:16px">Hi ${name},</p>
-        <p style="color:#cbd5e1">You have a <strong style="color:#fff">${matchLabel}</strong> in the ${formattedMonth} draw.</p>
+        <p style="color:#cbd5e1">${prizeDescription} in the ${formattedMonth} draw.</p>
         <div style="background:#1e293b;border-radius:12px;padding:20px;margin:24px 0">
           <p style="color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin:0 0 4px">Your prize</p>
           <p style="color:#10b981;font-size:36px;font-weight:900;margin:0">£${prizeAmount.toFixed(2)}</p>

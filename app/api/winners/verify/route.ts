@@ -4,14 +4,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
-
-function getServiceClient() {
-  return createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
-}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -30,7 +22,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { winnerId, action } = await request.json()
-  const serviceSupabase = getServiceClient()
+  const supabaseAdmin = await createClient()
 
   // Build the update payload based on the action
   // Each action represents a valid state transition in the lifecycle
@@ -50,7 +42,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
   }
 
-  const { error } = await serviceSupabase
+  const { error } = await supabaseAdmin
     .from('winners')
     .update(update)
     .eq('id', winnerId)

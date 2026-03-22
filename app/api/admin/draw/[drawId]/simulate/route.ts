@@ -83,10 +83,6 @@ export async function POST(
     .select('user_id, score')
     .in('user_id', userIds)
 
-  console.log('activeUsers:', activeUsers)
-  console.log('userIds:', userIds)
-  console.log('scores:', scores)
-
   if (!scores || scores.length === 0) {
     return NextResponse.json({ error: 'No subscribers have entered scores yet' }, { status: 400 })
   }

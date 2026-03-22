@@ -4,7 +4,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
+import { sanitizeInput } from "@/lib/utils";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -22,10 +23,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Verify charity exists
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  const supabase = await createClient();
 
   const { data: charity } = await supabase
     .from("charities")
@@ -48,8 +46,8 @@ export async function POST(request: NextRequest) {
           currency: "gbp",
           unit_amount: Math.round(amount * 100), // Stripe uses pence
           product_data: {
-            name: `Donation to ${charity.name}`,
-            description: `Direct donation via Tee It Forward${donorName ? ` from ${donorName}` : ""}`,
+            name: `Donation to ${sanitizeInput(charity.name)}`,
+            description: `Direct donation via Tee It Forward${donorName ? ` from ${sanitizeInput(donorName)}` : ""}`,
           },
         },
       },
@@ -59,17 +57,9 @@ export async function POST(request: NextRequest) {
     metadata: {
       type: "donation",
       charity_id: charityId,
-      charity_name: charity.name,
-      donor_name: donorName || "",
+      charity_name: sanitizeInput(charity.name),
+      donor_name: sanitizeInput(donorName || ""),
     },
-  });
-
-  // Update the charity's total_raised in Supabase
-  // We do this optimistically here — in production you'd do this
-  // in a webhook listening for 'checkout.session.completed' instead
-  await supabase.rpc("increment_charity_raised", {
-    charity_id: charityId,
-    amount_to_add: amount,
   });
 
   return NextResponse.json({ url: session.url });
